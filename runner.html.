@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pixel Pro 3D Runner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+      font-family: Arial, sans-serif;
+    }
+
+    #game {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #score {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      z-index: 10;
+    }
+
+    #jump {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      padding: 15px 25px;
+      font-size: 18px;
+      border: 0;
+      border-radius: 12px;
+      z-index: 10;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="score">Score: 0</div>
+<button id="jump">JUMP</button>
+
+<canvas id="game"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+
+<script>
+const scene = new THREE.Scene();
+
+scene.background = new THREE.Color(0x87ceeb);
+
+const camera = new THREE.PerspectiveCamera(
+  70,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+
+const renderer = new THREE.WebGLRenderer({
+  canvas: document.getElementById("game"),
+  antialias: true
+});
+
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+camera.position.set(0, 4, 7);
+camera.lookAt(0, 1, 0);
+
+// Light
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5, 10, 5);
+scene.add(light);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+// Ground
+const groundGeometry = new THREE.BoxGeometry(12, 0.5, 100);
+const groundMaterial = new THREE.MeshStandardMaterial({
+  color: 0x333333
+});
+
+const ground = new THREE.Mesh(
+  groundGeometry,
+  groundMaterial
+);
+
+ground.position.y = -0.5;
+scene.add(ground);
+
+// Player
+const playerGeometry = new THREE.BoxGeometry(1, 1.5, 1);
+const playerMaterial = new THREE.MeshStandardMaterial({
+  color: 0x00ff88
+});
+
+const player = new THREE.Mesh(
+  playerGeometry,
+  playerMaterial
+);
+
+player.position.set(0, 0.75, 0);
+scene.add(player);
+
+let velocityY = 0;
+let jumping = false;
+
+// Obstacles
+const obstacles = [];
+
+function createObstacle() {
+
+  const geometry = new THREE.BoxGeometry(1.2, 1.5, 1.2);
+
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xff3333
+  });
+
+  const obstacle = new THREE.Mesh(
+    geometry,
+    material
+  );
+
+  obstacle.position.y = 0.75;
+  obstacle.position.z = -40;
+
+  const lanes = [-3, 0, 3];
+
+  obstacle.position.x =
+    lanes[Math.floor(Math.random() * lanes.length)];
+
+  scene.add(obstacle);
+  obstacles.push(obstacle);
+}
+
+setInterval(createObstacle, 1500);
+
+let score = 0;
+let gameOver = false;
+
+function jump() {
+
+  if (!jumping && !gameOver) {
+    velocityY = 0.18;
+    jumping = true;
+  }
+
+  if (gameOver) {
+    location.reload();
+  }
+}
+
+document.getElementById("jump").onclick = jump;
+
+document.addEventListener("keydown", function(event) {
+
+  if (event.code === "Space") {
+    jump();
+  }
+
+  if (event.code === "ArrowLeft") {
+    player.position.x -= 3;
+  }
+
+  if (event.code === "ArrowRight") {
+    player.position.x += 3;
+  }
+
+});
+
+function animate() {
+
+  requestAnimationFrame(animate);
+
+  if (!gameOver) {
+
+    // Gravity
+    velocityY -= 0.01;
+    player.position.y += velocityY;
+
+    if (player.position.y <= 0.75) {
+      player.position.y = 0.75;
+      velocityY = 0;
+      jumping = false;
+    }
+
+    // Move obstacles
+    obstacles.forEach(function(obstacle) {
+
+      obstacle.position.z += 0.35;
+
+      // Collision
+      if (
+        Math.abs(player.position.x - obstacle.position.x) < 1 &&
+        Math.abs(player.position.z - obstacle.position.z) < 1 &&
+        Math.abs(player.position.y - obstacle.position.y) < 1.2
+      ) {
+
+        gameOver = true;
+
+        document.getElementById("score").innerHTML =
+          "GAME OVER — Score: " + score +
+          "<br><small>Tap JUMP to restart</small>";
+      }
+
+      // Score
+      if (obstacle.position.z > 5) {
+        score++;
+        obstacle.position.z = 100;
+      }
+
+    });
+
+    document.getElementById("score").innerText =
+      "Score: " + score;
+
+  }
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+window.addEventListener("resize", function() {
+
+  camera.aspect =
+    window.innerWidth / window.innerHeight;
+
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+  );
+
+});
+</script>
+
+</body>
+</html>
